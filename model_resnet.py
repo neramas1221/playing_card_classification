@@ -1,3 +1,4 @@
+import timm
 import torch
 import pandas as pd
 import torch.nn as nn
@@ -17,11 +18,11 @@ device = torch.device(0 if torch.cuda.is_available() else 'cpu')
 
 epoches = 50
 
+
 class TrainingDataSet(data.Dataset):
     def __init__(self):
         super().__init__()
-        # self.df = pd.read_csv("image_classification/training_with_gen.csv")
-        self.df = pd.read_csv("/home/connor/.cache/kagglehub/datasets/gpiosenka/cards-image-datasetclassification/versions/2/cards.csv")
+        self.df = pd.read_csv("card_data_set/cards.csv")
         self.lb = LabelEncoder()
         _ = self.lb.fit(self.df["card type"])
         self.df["card_labels"] = self.lb.transform(self.df["card type"])
@@ -43,8 +44,7 @@ class TrainingDataSet(data.Dataset):
 
     def __getitem__(self, index):
         row = self.df_train.iloc[index]
-        # img = TV.to_tensor(Image.open(f"image_classification/{row['filepaths']}"))
-        img = TV.to_tensor(Image.open(f"/home/connor/.cache/kagglehub/datasets/gpiosenka/cards-image-datasetclassification/versions/2/{row['filepaths']}"))
+        img = TV.to_tensor(Image.open(f"card_data_set/{row['filepaths']}"))
         img = self.transforms(img)
 
         label = row["card_labels"]
@@ -55,7 +55,7 @@ class TrainingDataSet(data.Dataset):
 class TestDataSet(data.Dataset):
     def __init__(self, lb):
         super().__init__()
-        self.df = pd.read_csv("/home/connor/.cache/kagglehub/datasets/gpiosenka/cards-image-datasetclassification/versions/2/cards.csv")
+        self.df = pd.read_csv("card_data_set/cards.csv")
         self.lb = lb
         _ = self.lb.fit(self.df["card type"])
         self.df["card_labels"] = self.lb.transform(self.df["card type"])
@@ -70,7 +70,7 @@ class TestDataSet(data.Dataset):
 
     def __getitem__(self, index):
         row = self.df_test.iloc[index]
-        img = TV.to_tensor(Image.open(f"/home/connor/.cache/kagglehub/datasets/gpiosenka/cards-image-datasetclassification/versions/2/{row['filepaths']}"))
+        img = TV.to_tensor(Image.open(f"card_data_set/{row['filepaths']}"))
         img = self.transforms(img)
         label = row["card_labels"]
 
@@ -80,7 +80,7 @@ class TestDataSet(data.Dataset):
 class ValidationData(data.Dataset):
     def __init__(self, lb):
         super().__init__()
-        self.df = pd.read_csv("/home/connor/.cache/kagglehub/datasets/gpiosenka/cards-image-datasetclassification/versions/2/cards.csv")
+        self.df = pd.read_csv("card_data_set/cards.csv")
         self.lb = lb
         _ = self.lb.fit(self.df["card type"])
         self.df["card_labels"] = self.lb.transform(self.df["card type"])
@@ -95,14 +95,13 @@ class ValidationData(data.Dataset):
 
     def __getitem__(self, index):
         row = self.df_test.iloc[index]
-        img = TV.to_tensor(Image.open(f"/home/connor/.cache/kagglehub/datasets/gpiosenka/cards-image-datasetclassification/versions/2/{row['filepaths']}"))
+        img = TV.to_tensor(Image.open(f"card_data_set/{row['filepaths']}"))
         img = self.transforms(img)
         label = row["card_labels"]
 
         return {"image": img, "caption": label}
 
 
-import timm
 def CNN_mdl():
     num_classes = 13 # Replace num_classes with the number of classes in your data
 
@@ -114,14 +113,15 @@ def CNN_mdl():
     model.fc = nn.Linear(num_features, num_classes)
     return model
 
+
 def create_model():
     mdl = CNN_mdl().to(device)
     loss_fn = nn.CrossEntropyLoss()
-    opt = optim.Adam(mdl.parameters(), lr=0.001)#, momentum=0.9)
+    opt = optim.Adam(mdl.parameters(), lr=0.001)
 
     return mdl, loss_fn, opt
 
-# img = torch.randn(3, 3, 256, 256)
+
 def create_datasets():
     tds = TrainingDataSet()
     testds = TestDataSet(tds.get_encoder())
@@ -165,7 +165,6 @@ def train_mdl(mdl, loss_fn, opt, trainloader, testloader):
 
 
 def validate_mdl(mdl, valloader, lb):
-
     check_point = torch.load("best_mdl_suit.pt", weights_only=True)
     mdl.load_state_dict(check_point["model"])
     mdl.eval()
